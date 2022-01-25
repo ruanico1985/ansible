@@ -1,0 +1,7 @@
+daemon_apache: httpd 
+softwr_apache: httpd,nfs-utils,php
+htdocs_apache: /var/www/html
+usernm_apache: apache
+groupn_apache: apache
+softwr_tomcat: tomcat
+

@@ -1,0 +1,7 @@
+daemon_apache: apache2 
+softwr_apache: apache2,apache2-mod_php7
+htdocs_apache: /srv/www/htdocs
+usernm_apache: wwwrun
+groupn_apache: wwwrun
+softwr_tomcat: tomcat
+
