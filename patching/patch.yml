@@ -1,0 +1,15 @@
+---
+- hosts: apache2,apache3
+  become: yes
+  gather_facts: true
+
+  # Cargo los roles necesarios para el parcheo
+  roles:
+    - common_patch
+
+  tasks:
+
+    - name: Display all variables/facts known for a host
+      debug:
+        var: hostvars[inventory_hostname]
+      tags: debug_info
