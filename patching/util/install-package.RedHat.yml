@@ -1,4 +1,0 @@
-- name: "Instala paquete {{ paquete }} CentOS"
-  dnf:
-    name: "{{ paquete }}"
-    state: present
