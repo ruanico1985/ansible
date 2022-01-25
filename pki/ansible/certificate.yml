@@ -99,7 +99,6 @@
       path: "/pki/ca/intermediate/newcerts/{{ cn }}.pfx"
       friendly_name: "{{ cn }}"
       privatekey_path: "/pki/ca/intermediate/newcerts/{{ cn }}.key"
-      #privatekey_passphrase: "admin{{ cn }}"
       certificate_path: "/pki/ca/intermediate/newcerts/{{ cn }}.pem"
       other_certificates: /pki/ca/intermediate/certs/ca-chain.cert.pem
       passphrase: "XXXXX" # Passphrase for the pkcs12
