@@ -1,16 +1,18 @@
-#- name: Halt VM
-#  virt:
-#    name: '{{ inventory_hostname }}'
-#    state: shutdown
-#  delegate_to: localhost
+- name: Halt VM
+  virt:
+    name: '{{ inventory_hostname }}'
+    state: shutdown
+  delegate_to: localhost
 
-#- name: Boot VM
-#  virt:
-#    name: '{{ inventory_hostname }}'
-#    state: running
-#  delegate_to: localhost
+# Pending: Take snapshot
 
-- name: Deshabilita el servidor {{ inventory_hostname }} en todos los pools
+- name: Boot VM
+  virt:
+    name: '{{ inventory_hostname }}'
+    state: running
+  delegate_to: localhost
+
+- name: Disable server {{ inventory_hostname }} in all Haproxy pools (if any)
   haproxy:
     state: disabled
     host: '{{ inventory_hostname }}'
@@ -18,17 +20,12 @@
     fail_on_not_found: no
   delegate_to: haproxy
 
-- name: Deshabilita SELINUX
+- name: Disable SELINUX, only for testing
   selinux:
     state: disabled
   when: ansible_facts['os_family'] == "RedHat"
 
-## Lanzo el parcheo segun el tipo de distribucion
-#- name: Parchear el servidor {{ inventory_hostname }}
-#  include_tasks: util/Patch.{{ ansible_facts['os_family'] }}.yml
-#  register: resultado
-
-- name: Parchear el servidor {{ inventory_hostname }}
+- name: Patch the server {{ inventory_hostname }}
   include_tasks: '{{ item }}'
   vars:
     params:
@@ -44,16 +41,6 @@
     connect_timeout: 600
   when: resultado is changed
 
-#- name: read vars from first file found, use 'vars/' relative subdir
-#  include_vars: "{{lookup('first_found', params)}}"
-#  vars:
-#    params:
-#      files:
-#        - '{{ansible_os_distribution}}.yml'
-#        - '{{ansible_os_family}}.yml'
-#        - default.yml
-#      paths:
-#        - 'vars'
 
 
 
