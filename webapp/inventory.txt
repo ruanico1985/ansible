@@ -1,0 +1,31 @@
+[all]
+apache1 ansible_connection='ssh' ansible_ssh_user='manager' ansible_ssh_pass='{{ manager_pass_apache1 }}' ansible_become_method='su' ansible_become_user='root' ansible_become_pass='{{ root_pass_apache1 }}' ansible_ssh_host='apache1' casa_servicio='APACHE' casa_entorno='P' cpd='1'
+apache2 ansible_connection='ssh' ansible_ssh_user='manager' ansible_ssh_pass='{{ manager_pass_apache2 }}' ansible_become_method='su' ansible_become_user='root' ansible_become_pass='{{ root_pass_apache2 }}' ansible_ssh_host='apache2' casa_servicio='APACHE' casa_entorno='P' cpd='2'
+apache4 ansible_connection='ssh' ansible_ssh_user='manager' ansible_ssh_pass='{{ manager_pass_apache3 }}' ansible_become_method='su' ansible_become_user='root' ansible_become_pass='{{ root_pass_apache3 }}' ansible_ssh_host='apache3' casa_servicio='APACHE' casa_entorno='P' cpd='1'
+apache3 ansible_connection='ssh' ansible_ssh_user='manager' ansible_ssh_pass='{{ manager_pass_apache3 }}' ansible_become_method='sudo' ansible_become_pass='{{ manager_pass_apache3 }}' ansible_ssh_host='apache3' casa_servicio='TOMCAT' casa_entorno='P' cpd='2'
+haproxy ansible_connection='ssh' ansible_ssh_user='manager' ansible_ssh_pass='{{ manager_pass_haproxy }}' ansible_become_method='sudo' ansible_become_pass='{{ manager_pass_haproxy }}' ansible_ssh_host='haproxy' casa_servicio='HAPROXY' casa_entorno='P' cpd='2'
+ansible ansible_connection='local' ansble_become="yes" ansible_become_method="sudo" ansible_user="manager" ansible_become_pass="manager"
+localhost ansible_connection='local' ansble_become="yes" ansible_become_method="sudo" ansible_user="manager" ansible_become_pass="manager"
+
+[apache]
+apache1
+apache2
+apache3
+apache4
+
+[cpd1]
+apache1
+apache3
+
+[cpd2]
+apache2
+apache4
+haproxy
+
+[prod]
+apache1
+apache2
+apache3
+apache4
+haproxy
+
