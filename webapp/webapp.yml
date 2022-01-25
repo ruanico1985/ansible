@@ -1,0 +1,18 @@
+---
+- hosts: apache2,apache3
+  become: yes
+  gather_facts: true
+
+  tasks:
+    # Depending on the host_var it_service in the inventory file (Service which should run each server) in the inventory File
+    # try to check if there is any role that matches these service
+    # Only APACHE and TOMCAT
+    - stat:
+        path: "{{ playbook_dir }}/roles/{{ it_service }}/tasks/main.yml"
+      register: result
+      delegate_to: localhost
+
+    # Run the role relative to the service specified
+    - include_role:
+        name: "{{ it_service }}"
+      when: result.stat.exists == True
