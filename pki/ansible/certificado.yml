@@ -1,46 +1,42 @@
 ---
 
-- name: Gestionar certificado
+- name: Create a server certificate with a CN and some SubjectAlternativeName
   connection: local
   gather_facts: false
   hosts: localhost
   vars:
-    cn: misco.ruanico.int
-    san: "DNS:apache1.ruanico.int,DNS:apache2.ruanico.int"
+    cn: mywebapp.mydomain.com
+    san: "DNS:apache1.mydomain.com,DNS:apache2.mydomain.com"
   tasks:
 
-  - name: Crea KEY
+  - name: "Create the private key for {{ cn }}"
     openssl_privatekey:
-      #cipher: aes256
       path: "/pki/ca/intermediate/newcerts/{{ cn }}.key"
-      #passphrase: "admin{{ cn }}"
 
-  - name: Crea CSR
+  - name: "Create the certificate signing request for {{ cn }}"
     openssl_csr:
       path: "/pki/ca/intermediate/newcerts/{{ cn }}.csr"
       privatekey_path: "/pki/ca/intermediate/newcerts/{{ cn }}.key"
-      # Solo si la PKI la creamos con aes256
-      #privatekey_passphrase: "admin{{ cn }}"
       country_name: ES
-      email_address: miMail@gmail.com
-      locality_name: Almeria
-      state_or_province_name: Andalucia
-      organization_name: Ruanico
-      organizational_unit_name: Departamento de Sistemas
+      email_address: miMail@mydomain.com
+      locality_name: Madrid
+      state_or_province_name: Madrid
+      organization_name: MyDomain
+      organizational_unit_name: IT Department
       subject_alt_name: "{{ san }}"
       common_name: "{{ cn }}"
       state: present
 
-  - name: Verifica PEM
+  - name: "Check if existing certificate for {{ cn }} has a validity period of 30 days yet"
     openssl_certificate:
       provider: assertonly
       path: "/pki/ca/intermediate/newcerts/{{ cn }}.pem"
       valid_at: "+30d"
-    register: expirado
+    register: expiring
     ignore_errors: true
 
-  # Con command porque el modulo no soporta revocar con CRL
-  - name: Revoca CERT
+  # This task is with command, because openssl module does not support CRL integration of config file usage
+  - name: "Revoke existing certificate for {{ cn }}"
     command:
       argv:
         - /usr/bin/openssl
@@ -52,11 +48,11 @@
         - -batch
         - -config
         - /pki/ca/intermediate/openssl.cnf
-    when: expirado is failed
+    when: expiring is failed
     ignore_errors: true
 
-  # Con command porque el módulo no soporta actualizar CRL.
-  - name: Update CRL
+  # This task is with command, because openssl module does not support CRL integration of config file usage
+  - name: "Update CRL after revoking the existing certificate for {{ cn }}"
     command:
       argv:
         - /usr/bin/openssl
@@ -68,15 +64,15 @@
         - 30
         - -out
         - /pki/ca/intermediate/crl.pem
-    when: expirado is true
+    when: expiring is true
 
-  - name: Regenera PEM
+  - name: "Remove existing certificate file for {{ cn }} after revoking it"
     file:
       path: "/pki/ca/intermediate/newcerts/{{ cn }}.pem"
       state: absent
-    when: expirado is failed
+    when: expiring is failed
 
-  # Con command porque el módulo no soporta asignar un fichero de config.
+  # This task is with command, because openssl module does not support config file usage
   - name: CREAPEM
     command:
       argv:
@@ -91,13 +87,13 @@
         - -out
         - /pki/ca/intermediate/newcerts/{{ cn }}.pem
         - -key
-        - 5678
+        - XXXX # Private key password of the intermediate CA Cert
         - -batch
         - -config
         - /pki/ca/intermediate/openssl.cnf
-    when: expirado is failed
+    when: expiring is failed
 
-  - name: Crea PKCS12
+  - name: "Create PKCS12 for {{ cn }}"
     openssl_pkcs12:
       action: export
       path: "/pki/ca/intermediate/newcerts/{{ cn }}.pfx"
@@ -106,8 +102,5 @@
       #privatekey_passphrase: "admin{{ cn }}"
       certificate_path: "/pki/ca/intermediate/newcerts/{{ cn }}.pem"
       other_certificates: /pki/ca/intermediate/certs/ca-chain.cert.pem
-      passphrase: "admin{{ cn }}"
+      passphrase: "XXXXX" # Passphrase for the pkcs12
       state: present
-
-# Actualizar CRL
-# openssl ca  openssl.cnf -gencrl  -out crl.pem
