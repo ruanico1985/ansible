@@ -1,0 +1,113 @@
+---
+
+- name: Gestionar certificado
+  connection: local
+  gather_facts: false
+  hosts: localhost
+  vars:
+    cn: misco.ruanico.int
+    san: "DNS:apache1.ruanico.int,DNS:apache2.ruanico.int"
+  tasks:
+
+  - name: Crea KEY
+    openssl_privatekey:
+      #cipher: aes256
+      path: "/pki/ca/intermediate/newcerts/{{ cn }}.key"
+      #passphrase: "admin{{ cn }}"
+
+  - name: Crea CSR
+    openssl_csr:
+      path: "/pki/ca/intermediate/newcerts/{{ cn }}.csr"
+      privatekey_path: "/pki/ca/intermediate/newcerts/{{ cn }}.key"
+      # Solo si la PKI la creamos con aes256
+      #privatekey_passphrase: "admin{{ cn }}"
+      country_name: ES
+      email_address: miMail@gmail.com
+      locality_name: Almeria
+      state_or_province_name: Andalucia
+      organization_name: Ruanico
+      organizational_unit_name: Departamento de Sistemas
+      subject_alt_name: "{{ san }}"
+      common_name: "{{ cn }}"
+      state: present
+
+  - name: Verifica PEM
+    openssl_certificate:
+      provider: assertonly
+      path: "/pki/ca/intermediate/newcerts/{{ cn }}.pem"
+      valid_at: "+30d"
+    register: expirado
+    ignore_errors: true
+
+  # Con command porque el modulo no soporta revocar con CRL
+  - name: Revoca CERT
+    command:
+      argv:
+        - /usr/bin/openssl
+        - ca
+        - -revoke
+        - /pki/ca/intermediate/newcerts/{{ cn }}.pem
+        - -key
+        - 5678
+        - -batch
+        - -config
+        - /pki/ca/intermediate/openssl.cnf
+    when: expirado is failed
+    ignore_errors: true
+
+  # Con command porque el módulo no soporta actualizar CRL.
+  - name: Update CRL
+    command:
+      argv:
+        - /usr/bin/openssl
+        - ca
+        - -config
+        - /pki/ca/intermediate/openssl.cnf
+        - -gencrl
+        - -crldays
+        - 30
+        - -out
+        - /pki/ca/intermediate/crl.pem
+    when: expirado is true
+
+  - name: Regenera PEM
+    file:
+      path: "/pki/ca/intermediate/newcerts/{{ cn }}.pem"
+      state: absent
+    when: expirado is failed
+
+  # Con command porque el módulo no soporta asignar un fichero de config.
+  - name: CREAPEM
+    command:
+      argv:
+        - /usr/bin/openssl
+        - ca
+        - -cert
+        - /pki/ca/intermediate/certs/intermediate.cert.pem
+        - -keyfile
+        - /pki/ca/intermediate/private/intermediate.key.pem
+        - -in
+        - /pki/ca/intermediate/newcerts/{{ cn }}.csr
+        - -out
+        - /pki/ca/intermediate/newcerts/{{ cn }}.pem
+        - -key
+        - 5678
+        - -batch
+        - -config
+        - /pki/ca/intermediate/openssl.cnf
+    when: expirado is failed
+
+  - name: Crea PKCS12
+    openssl_pkcs12:
+      action: export
+      path: "/pki/ca/intermediate/newcerts/{{ cn }}.pfx"
+      friendly_name: "{{ cn }}"
+      privatekey_path: "/pki/ca/intermediate/newcerts/{{ cn }}.key"
+      #privatekey_passphrase: "admin{{ cn }}"
+      certificate_path: "/pki/ca/intermediate/newcerts/{{ cn }}.pem"
+      other_certificates: /pki/ca/intermediate/certs/ca-chain.cert.pem
+      passphrase: "admin{{ cn }}"
+      state: present
+
+# Actualizar CRL
+# openssl ca  openssl.cnf -gencrl  -out crl.pem
