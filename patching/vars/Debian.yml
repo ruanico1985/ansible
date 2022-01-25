@@ -1,0 +1,9 @@
+daemon_apache: apache2 
+softwr_apache: apache2,nfs-common,php7.3
+htdocs_apache: /var/www/html
+usernm_apache: wwwrun
+groupn_apache: wwwrun
+daemon_tomcat: tomcat9
+softwr_tomcat: tomcat9
+ctlina_tomcat: /var/lib/tomcat9/webapps
+

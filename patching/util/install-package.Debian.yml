@@ -1,0 +1,4 @@
+- name: "Instala paquete {{ paquete }} Debian/Ubuntu"
+  apt:
+    name: "{{ paquete }}"
+    state: present

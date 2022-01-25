@@ -1,0 +1,7 @@
+- zypper:
+    name: '*'
+    state: latest
+    type: patch
+    update_cache: yes
+  register: resultado
+  failed_when: resultado.rc != 0 and resultado.rc != 102

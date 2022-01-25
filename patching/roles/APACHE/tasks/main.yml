@@ -1,0 +1,103 @@
+---
+
+# Necesitamos el fichero de variables para os_family
+#- include_vars:
+#    file: "{{ ansible_facts['os_family'] }}.yml"
+#    name: "os"
+
+- name: Cargamos las variables que mas se ajusten a {{ inventory_hostname }}
+  include_vars: '{{ item }}'
+  vars:
+    params:
+      files:
+        - "vars/{{ ansible_facts['distribution'] }}-{{ ansible_facts['distribution_major_version'] }}.yml"
+        - "vars/{{ ansible_facts['distribution'] }}.yml"
+        - "vars/{{ ansible_facts['os_family'] }}.yml"
+  loop: "{{ q('first_found', params, errors='ignore') }}"
+
+# Instalamos los PAQUETES de apache
+- name: Instala los RPM de apache
+  include_tasks: util/install-package.{{ ansible_facts['os_family'] }}.yml
+  vars:
+    paquete: "{{ softwr_apache }}"
+
+# Verificamos que el servicio esta habilitado
+- name: Activar el servicio {{ os ['daemon_apache'] }}
+  service:
+    name: "{{ daemon_apache }}"
+#    state: started
+    enabled: yes
+  register: demonio
+
+# Activamos modulo PHP en openSUSE
+- apache2_module:
+    state: present
+    name: php7
+  register: phpEnable
+  when: ansible_facts['os_family'] == "Suse"
+
+# Reiniciamos Apache por si ha cambiado algo
+- name: Re-Verificar el demonio {{ os ['daemon_apache'] }}
+  service:
+    name: "{{ daemon_apache }}"
+    state: restarted
+    enabled: yes
+  register: 
+  when: demonio is changed or phpEnable is changed
+  #when: demonio is changed
+
+# Verificamos que el servicio firewalld esta detenido
+- name: Verificar el demonio {{ os ['daemon_apache'] }}
+  service:
+    name: firewalld
+    state: stopped
+    enabled: no
+  when: ansible_facts['os_family'] == "RedHat" or ansible_facts['os_family'] == "Suse"
+
+- name: Montar contenidos en NFS
+  mount:
+    path: "{{ htdocs_apache }}"
+    src: 192.168.0.250:/nfs/Descargas/ansible/content
+    fstype: nfs
+    opts: ro
+    state: mounted
+    boot: yes
+
+- name: La pagina devuelve un codigo 200
+  uri:
+    url: "http://{{ inventory_hostname }}"
+    status_code: 200
+
+- name: Comprueba que la pagina devuelve el nombre del host
+  uri:
+    url: "http://{{ inventory_hostname }}"
+    return_content: yes
+  register: this
+  failed_when: "inventory_hostname not in this.content"
+
+- name: Alta de elemento en haproxy
+  blockinfile:
+    path: /etc/haproxy/haproxy.cfg
+    insertbefore: "	# END BACKEND"
+    block: "	server {{ inventory_hostname }} {{ inventory_hostname }}:80 check"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK para {{ inventory_hostname }}"
+    state: present
+  delegate_to: haproxy
+  register: altaBal
+
+- name: Reload Haproxy
+  service:
+    name: haproxy
+    state: reloaded
+  delegate_to: haproxy
+  when: altaBal is changed
+
+- name: Habilita el servidor {{ inventory_hostname }} en todos los pools
+  haproxy:
+    state: enabled
+    socket: /var/run/haproxy/admin.sock
+    host: '{{ inventory_hostname }}'
+    fail_on_not_found: yes
+  delegate_to: haproxy
+
+

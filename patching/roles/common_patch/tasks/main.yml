@@ -1,0 +1,59 @@
+#- name: Halt VM
+#  virt:
+#    name: '{{ inventory_hostname }}'
+#    state: shutdown
+#  delegate_to: localhost
+
+#- name: Boot VM
+#  virt:
+#    name: '{{ inventory_hostname }}'
+#    state: running
+#  delegate_to: localhost
+
+- name: Deshabilita el servidor {{ inventory_hostname }} en todos los pools
+  haproxy:
+    state: disabled
+    host: '{{ inventory_hostname }}'
+    socket: /var/run/haproxy/admin.sock
+    fail_on_not_found: no
+  delegate_to: haproxy
+
+- name: Deshabilita SELINUX
+  selinux:
+    state: disabled
+  when: ansible_facts['os_family'] == "RedHat"
+
+## Lanzo el parcheo segun el tipo de distribucion
+#- name: Parchear el servidor {{ inventory_hostname }}
+#  include_tasks: util/Patch.{{ ansible_facts['os_family'] }}.yml
+#  register: resultado
+
+- name: Parchear el servidor {{ inventory_hostname }}
+  include_tasks: '{{ item }}'
+  vars:
+    params:
+      files:
+        - util/Patch.{{ ansible_facts['distribution'] }}-{{ ansible_facts['distribution_major_version'] }}.yml
+        - util/Patch.{{ ansible_facts['distribution'] }}.yml
+        - util/Patch.{{ ansible_facts['os_family'] }}.yml
+  loop: "{{ q('first_found', params, errors='ignore') }}"
+  register: resultado
+
+- name: Reboot server
+  reboot:
+    connect_timeout: 600
+  when: resultado is changed
+
+#- name: read vars from first file found, use 'vars/' relative subdir
+#  include_vars: "{{lookup('first_found', params)}}"
+#  vars:
+#    params:
+#      files:
+#        - '{{ansible_os_distribution}}.yml'
+#        - '{{ansible_os_family}}.yml'
+#        - default.yml
+#      paths:
+#        - 'vars'
+
+
+
