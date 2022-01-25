@@ -1,0 +1,7 @@
+- name: "Instala paquete {{ paquete }} opensuse"
+  zypper:
+    name: "{{ paquete }}"
+    state: present
+  register: resultado
+  failed_when: resultado.rc != 0 and resultado.rc != 102
+
